@@ -1,0 +1,93 @@
+name: EFI Build and Release
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install ACPI tools and zip utilities
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y acpica-tools zip unzip
+
+      # Step 3: Compile all SSDT DSL files to AML
+      - name: Compile SSDTs
+        run: |
+          mkdir -p OC/ACPI/AML
+          for f in OC/ACPI/*.dsl; do
+            echo "Compiling $f..."
+            iasl "$f" -o "OC/ACPI/AML/$(basename "${f%.dsl}.aml")" || exit 1
+          done
+          echo "All SSDTs compiled successfully."
+
+      # Step 4: Validate the config.plist file
+      - name: Validate config.plist
+        run: |
+          if [ -f OC/OCValidate/OCValidate ]; then
+            chmod +x OC/OCValidate/OCValidate
+            OC/OCValidate/OCValidate OC/config.plist || exit 1
+            echo "config.plist validation passed."
+          else
+            echo "OCValidate not found, skipping validation."
+          fi
+
+      # Step 5: Verify that all required kexts are present
+      - name: Verify Kexts
+        run: |
+          REQUIRED_KEXTS=("Lilu.kext" "WhateverGreen.kext" "VirtualSMC.kext" "SMCProcessor.kext" "SMCSuperIO.kext")
+          MISSING=false
+          for k in "${REQUIRED_KEXTS[@]}"; do
+            if [ ! -d "OC/Kexts/$k" ]; then
+              echo "Missing $k"
+              MISSING=true
+            fi
+          done
+          if [ "$MISSING" = true ]; then
+            echo "Some required kexts are missing. Build failed."
+            exit 1
+          fi
+          echo "All required kexts are present."
+
+      # Step 6: Package the EFI folder into a ZIP file
+      - name: Package EFI
+        id: package
+        run: |
+          ZIP_NAME="EFI-Release-$(date +%Y%m%d-%H%M%S).zip"
+          zip -r "$ZIP_NAME" BOOT OC
+          echo "EFI packaged as $ZIP_NAME"
+          echo "zip=$ZIP_NAME" >> $GITHUB_OUTPUT
+
+      # Step 7: Upload the EFI ZIP as an artifact
+      - name: Upload EFI Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: EFI-ZIP
+          path: ${{ steps.package.outputs.zip }}
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Attach EFI ZIP to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "EFI-Release-*.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
