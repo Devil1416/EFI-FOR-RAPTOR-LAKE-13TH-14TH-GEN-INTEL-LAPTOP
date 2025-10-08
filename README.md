@@ -1,4 +1,4 @@
-#EFI for Intel 13th / 14th Gen Raptor Lake Desktops
+# EFI for Intel 13th / 14th Gen Raptor Lake Desktops
 
 
 A personally tested and verified OpenCore EFI built specifically for Intel 13th and 14th Gen Raptor Lake desktop systems.
