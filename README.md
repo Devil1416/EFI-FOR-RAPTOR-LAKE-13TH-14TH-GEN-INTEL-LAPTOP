@@ -28,8 +28,6 @@ This configuration provides a stable, near-native macOS experience, whether you 
 
 🧬 Compatibility
 
-Chipsets: Intel 600 / 700 Series
-
 CPUs: Intel Core 13th Gen & 14th Gen (Raptor Lake / Raptor Lake Refresh)
 
 Graphics:
@@ -75,3 +73,6 @@ Community testers and developers for Raptor Lake support
 This EFI is released for educational and experimental use.
 Tested personally and verified to work on Intel 13th and 14th Gen desktops.
 Use responsibly, and always customize serials before logging into Apple services.
+
+with love
+n1ggaman
